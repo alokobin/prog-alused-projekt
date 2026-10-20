@@ -18,8 +18,92 @@ Mõtle läbi ja pane kirja oma projekti idee.
 6. **Esitamine:** KRE rühmadel on kohustuslik lisada GitHubi link projektile.
 7. **Kaitsmine:** Projekti suuline kaitsmine.
 
-### Ideede näited:
-* **Kalkulaatorid:** palgakalkulaator, laenu- või liisingu kalkulaator.
-* **Mängud:** põgenemismäng (teksti kujul), lahingusimulaator, interaktiivne ulmekirjandus, petu-loterii, petu-kasiino.
-* **Šifreerimine ja dešifreerimine:** Caesari šiffer, tantsivad mehikesed, ideed raamatust *Cracking Codes with Python*.
-* **Päriselu tööd lihtsustavad programmid:** postiloend, riiete lõikeid genereeriv programm, laboriseadmete broneerimissüsteem, ideed raamatust *Automate Boring Stuff* jne.
+# Elektri börsihinna näidik
+
+Programmeerimise Alused – paaristöö projekt
+
+**Autorid:** _(nimed)_
+
+## Projekti eesmärk
+
+Programm küsib Eleringi avalikust API-st Eesti tänase päeva elektri börsihinnad ja kuvab väikesel ekraanil:
+
+- praeguse hinna
+- päeva maksimumhinna (ja selle kellaaja)
+
+## Andmeallikas
+
+Elering Dashboard API (avalik, registreerimist ega API võtit pole vaja):
+
+- Praegune hind: `https://dashboard.elering.ee/api/nps/price/ee/current`
+- Ajavahemiku hinnad: `https://dashboard.elering.ee/api/nps/price?start=...&end=...`
+
+Olulised märkused:
+
+- Hind on **€/MWh ja ilma käibemaksuta**. Sendid kWh kohta = hind / 10.
+- Hinnad on **15-minutiliste vahemikena** (umbes 96 kirjet päevas).
+- Ajad on **UTC-s**, Eesti aeg on UTC+2 (talvel) või UTC+3 (suvel).
+
+## Vajalik tarkvara
+
+- Python 3
+- `requests` pakett: `pip install requests`
+
+## Projekti plaan
+
+Iga etapi lõpuks peab olema midagi, mis töötab ja mida saab katsetada.
+
+### 1. etapp: andmete kättesaamine
+- [ ] Teha päring Eleringi API-le
+- [ ] Printida vastus ekraanile täpselt sellisena, nagu see tuleb
+
+**Teemad:** paketi paigaldamine, `import`, muutujad
+
+### 2. etapp: vastuse lahtiharutamine
+- [ ] Saada vastusest kätte ainult praegune hind
+- [ ] Printida hind eraldi välja
+
+**Teemad:** sõnastikud (dict), listid, väärtuste kättesaamine
+
+### 3. etapp: arvutamine ja vormindamine
+- [ ] Teisendada hind €/MWh-st s/kWh-ks
+- [ ] Otsustada, kas lisada käibemaks (24%)
+- [ ] Võrrelda tulemust mõne elektrimüüja äpiga
+
+**Teemad:** aritmeetika, ümardamine, f-stringid
+
+### 4. etapp: terve päeva hinnad
+- [ ] Küsida kogu tänase päeva hinnad
+- [ ] Leida nende seast maksimum
+- [ ] Leida, mis kell maksimum on
+
+**Teemad:** `for`-tsükkel, `if`-tingimus, kuupäevad ja kellaajad (`datetime`)
+
+### 5. etapp: koodi korrastamine
+- [ ] Jagada kood funktsioonideks (nt hindade küsimine, maksimumi leidmine)
+
+**Teemad:** funktsioonid, parameetrid, `return`
+
+### 6. etapp: vigade käsitlemine
+- [ ] Programm ei jookse kokku, kui internet on maas või Elering ei vasta
+
+**Teemad:** `try` / `except`
+
+### 7. etapp: ekraanile kuvamine
+- [ ] Esialgu kuvamine terminalis
+- [ ] Valida riistvara (nt Raspberry Pi, ESP32) ja ekraan
+- [ ] Kuvada hinnad päris ekraanil
+
+### 8. etapp: automaatne uuendamine (lisaülesanne)
+- [ ] Programm uuendab hinda iga 15 minuti järel ise
+
+**Teemad:** `while`-tsükkel, `time.sleep`
+
+## Töökorraldus
+
+Kasutame paarisprogrammeerimist:
+
+- **Juht** kirjutab koodi.
+- **Navigeerija** jälgib, mõtleb kaasa ja märkab vigu.
+- Rolle vahetame iga etapi järel, et mõlemad saaksid kõigest aru.
+- Pärast iga etappi teeme Gitis commiti.
