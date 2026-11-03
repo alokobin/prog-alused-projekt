@@ -1,8 +1,10 @@
 import datetime
 import os
-
 import requests
 import csv
+import price_charts
+
+
 
 # Constants
 income_tax = 24
@@ -15,13 +17,59 @@ def convert_timestamp(timestamp):
 def calculate_price(price):
     return round((price / 1000) * (income_tax/100 + 1) * 100, 3)
 
+#AI abi sai kasutatud, et aru saada milliselt saaks day_prices json infot for loopiga läbida. Et saaks kindel tundide vahemik kätte
+# Loop, läbimiseks päeva hinnad ja iga 15 min tagant tagastada 2 tunni keskmise hinde
+def calculate_lowest_period_cost(hours):
+    period = hours * 4
+    lowest_energy_price_range = 99999
+    lowest_energy_price_time = convert_timestamp(day_prices[0]["timestamp"])
+
+    for i in range(len(day_prices) - period + 1):
+        energy_price_sum = 0
+        for n in range(i, i + period):
+            energy_price_sum += calculate_price(day_prices[n]["price"])
+        energy_price_time = convert_timestamp(day_prices[i]["timestamp"])
+        period_average_price = round(energy_price_sum / period, 3)
+        if period_average_price < lowest_energy_price_range:
+            lowest_energy_price_range = period_average_price
+            lowest_energy_price_time = energy_price_time.time().strftime("%H:%M")
+    return lowest_energy_price_range, lowest_energy_price_time
+
+# AI aitas millisel kujul oleks loogika mõistlikum.
+# Salvesta päeva hinna info faili hilisemaks kasutamiseks
+def save_day_prices(prices, filename):
+    file_exists = os.path.exists(filename)
+    already_saved = False
+
+    if file_exists:
+        with open(filename, "r") as datafile:
+            reader = csv.reader(datafile)
+            next(reader)
+            for row in reader:
+                if int(row[0]) == prices[0]["timestamp"]:
+                    already_saved = True
+
+    if not file_exists:
+        with open(filename, "a", newline='') as datafile:
+            datawriter = csv.writer(datafile)
+            datawriter.writerow(["timestamp", "time", "price", "income_tax"])
+
+    if not already_saved:
+        with open(filename, "a", newline='') as datafile:
+            datawriter = csv.writer(datafile)
+            for row in range(len(prices)):
+                timestamp = int(prices[row]["timestamp"])
+                datawriter.writerow([
+                    timestamp,
+                    convert_timestamp(prices[row]["timestamp"]),
+                    prices[row]["price"],
+                    int(income_tax)])
 
 #API päringute jaoks kuupäevad, et oleks alati õige päev
 current_date = datetime.datetime.now()
 start_date = current_date.date() - datetime.timedelta(days=1)
 end_date = current_date.date()
 current_time = current_date.time().strftime("%H:%M")
-
 
 #API päringute URLi variables
 url_current_energy_price = "https://dashboard.elering.ee/api/nps/price/ee/current"
@@ -56,99 +104,26 @@ for timeslot in day_prices:
 max_day_energy_price_in_kWh = calculate_price(max_day_energy_price_in_MWh)
 min_day_energy_price_in_kWh = calculate_price(min_day_energy_price_in_MWh)
 
-#print(current_energy_price_info)
-#print(whole_day_energy_price_info)
+# Kuvame info seoses tänase elektri hinnaga
 print("Praegune kellaaeg", current_time)
 print("Praegune elektri hind:", current_energy_price, "s/kWh kell", convert_timestamp(current_price_time))
 print("Päeva kõrgeim elektri hind:", max_day_energy_price_in_kWh, "s/kWh kell" ,convert_timestamp(max_price_time))
 print("Päeva madalaim elektri hind:", min_day_energy_price_in_kWh, "s/kWh kell", convert_timestamp(min_price_time))
 
-
-# AI abi sai kasutatud, et aru saada kuidas peaks day_prices json infot for loopiga läbima. Et saaks kindel tundide vahemik kätte
-# Loop, läbimiseks päeva hinnad ja iga 15 min tagant tagastada 2 tunni keskmise hinde
-
-def calculate_lowest_period_cost(hours):
-    period = hours * 4
-    lowest_energy_price_range = 99999
-    lowest_energy_price_time = convert_timestamp(day_prices[0]["timestamp"])
-
-    for i in range(len(day_prices) - period + 1):
-        energy_price_sum = 0
-        for n in range(i, i + period):
-            energy_price_sum += calculate_price(day_prices[n]["price"])
-        energy_price_time = convert_timestamp(day_prices[i]["timestamp"])
-        period_average_price = round(energy_price_sum / period, 3)
-        if period_average_price < lowest_energy_price_range:
-            lowest_energy_price_range = period_average_price
-            lowest_energy_price_time = energy_price_time.time().strftime("%H:%M")
-        return lowest_energy_price_range, lowest_energy_price_time
-
-
+# Kuvame 2h odavaima perioodi
 period_average_price, energy_price_time = calculate_lowest_period_cost(2)
 print('Odavaim 2 tunnine periood:',period_average_price, 's/kWh' , energy_price_time)
 
-# AI aitas millisel kujul peaks loogika loodud olema.
-def save_day_prices(prices, filename):
-    file_exists = os.path.exists("./data/energy.csv")
-    write_to_file = False
-
-    if file_exists:
-        with open(filename, "r") as datafile:
-            reader = csv.reader(datafile)
-            for row in reader:
-                if row[0] != prices[0]["timestamp"]:
-                    write_to_file = True
-
-    if not file_exists:
-        with open(filename, "a", newline='') as datafile:
-            datawriter = csv.writer(datafile)
-            datawriter.writerow(["timestamp", "time", "price", "income_tax"])
-            write_to_file = True
-
-    if write_to_file:
-        with open(filename, "a", newline='') as datafile:
-            datawriter = csv.writer(datafile)
-            for row in range(len(prices)):
-                timestamp = int(prices[row]["timestamp"])
-                datawriter.writerow([
-                    timestamp,
-                    convert_timestamp(prices[row]["timestamp"]),
-                    prices[row]["price"],
-                    int(income_tax)])
-
-
 save_day_prices(day_prices, "./data/energy.csv")
 
-# ---------------------------------------------------------------------
-# ÜLESANNE C: GRAAFIK (matplotlib)
-# Joonista päeva hindadest graafik.
-# - Paigalda: pip install matplotlib
-# - Koosta tsükliga kaks listi: kellaajad (x) ja hinnad s/kWh (y)
-# - plt.plot() või plt.step() - kumb sobib paremini, kui hind
-#   kehtib terve 15 minuti jooksul muutumatult?
-# - Lisa telgede nimed ja pealkiri koos kuupäevaga
-# - Märgi praegune hetk püstjoonega (plt.axvline())
-#   ja päeva max/min punktid
-# - Boonus: tulpdiagramm (plt.bar()), kus odavad perioodid on
-#   rohelised ja kallid punased
-# - Salvesta pildina: plt.savefig()
-# ---------------------------------------------------------------------
+#AI poolt graafiku kuva
+times = []
+price_values = []
+for each in day_prices:
+    times.append(convert_timestamp(each["timestamp"]))
+    price_values.append(calculate_price(each["price"]))
+price_charts.draw_price_chart(times, price_values, "hinnagraafik.png")
 
-
-# ---------------------------------------------------------------------
-# ÜLESANNE D: EKRAAN JA LED (Raspberry Pi)
-# Füüsiline seade, mis näitab hinda pidevalt.
-# - Vaja: Raspberry Pi, LED-id + takistid, hiljem väike ekraan
-#   (nt I2C OLED SSD1306)
-# - Alusta ühest LED-ist: teek gpiozero, LED(17).on() / .off()
-# - Tingimus: hind alla piiri -> roheline LED, muidu punane
-#   Boonus: kolm LED-i odav / keskmine / kallis (vt Urmo ülesanne 2)
-# - Programm peab töötama pidevalt: while True + time.sleep()
-#   Kui tihti on mõtet hinda uuesti küsida?
-# - Ekraan: kuva praegune hind, kellaaeg ja päeva max
-# - NB! Siin muutub vigade käsitlemine päriselt oluliseks:
-#   kui WiFi korraks kaob, ei tohi seade "surra" (try / except)
-# ---------------------------------------------------------------------
 
 
 # =====================================================================
