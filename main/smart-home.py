@@ -85,77 +85,39 @@ def calculate_lowest_period_cost(hours):
 
 
 period_average_price, energy_price_time = calculate_lowest_period_cost(2)
-print('Odavaim periood:',period_average_price, energy_price_time)
+print('Odavaim 2 tunnine periood:',period_average_price, 's/kWh' , energy_price_time)
 
+# AI aitas millisel kujul peaks loogika loodud olema.
 def save_day_prices(prices, filename):
     file_exists = os.path.exists("./data/energy.csv")
-    if not file_exists:
-        with open("./data/energy_price.csv", "a", newline='') as datafile:
-            datawriter = csv.writer(datafile)
-            datawriter.writerow(["timestamp", "time", "price", "income_tax"])
+    write_to_file = False
 
-        with open("./data/energy.csv", "r") as datafile:
+    if file_exists:
+        with open(filename, "r") as datafile:
             reader = csv.reader(datafile)
             for row in reader:
-                if row[0] != day_prices[0]["timestamp"]:
+                if row[0] != prices[0]["timestamp"]:
                     write_to_file = True
-        if write_to_file:
-            with open("./data/energy.csv", "a", newline='') as datafile:
-                datawriter = csv.writer(datafile)
-                datawriter.writerow(
-                    [int(day_prices[i]["timestamp"]),
-                     energy_price_time,
-                     float(period_average_price),
-                     int(income_tax)])
 
-def write_price_data_to_file(hours = 2):
-    write_to_file = False
-    period = hours * 4
-    lowest_energy_price_range = 99999
-    lowest_energy_price_time = convert_timestamp(day_prices[0]["timestamp"])
+    if not file_exists:
+        with open(filename, "a", newline='') as datafile:
+            datawriter = csv.writer(datafile)
+            datawriter.writerow(["timestamp", "time", "price", "income_tax"])
+            write_to_file = True
 
-    for i in range(len(day_prices) - period + 1):
-        energy_price_sum = 0
-        for n in range(i, i + period):
-            energy_price_sum += calculate_price(day_prices[n]["price"])
-        energy_price_time = convert_timestamp(day_prices[i]["timestamp"])
-        period_average_price = round(energy_price_sum / period, 3)
-        if period_average_price < lowest_energy_price_range:
-            lowest_energy_price_range = period_average_price
-            lowest_energy_price_time = energy_price_time.time().strftime("%H:%M")
-        file_exists = os.path.exists("./data/energy.csv")
-        with open("./data/energy.csv", "a") as datafile:
-            if not file_exists:
-                with open("./data/energy.csv", "a", newline='') as datafile:
-                    datawriter = csv.writer(datafile)
-                    datawriter.writerow(["timestamp", "time", "price", "income_tax"])
-            with open("./data/energy.csv", "r") as datafile:
-                reader = csv.reader(datafile)
-                for row in reader:
-                    if row[0] != day_prices[0]["timestamp"]:
-                        write_to_file = True
-            if write_to_file:
-                with open("./data/energy.csv", "a", newline='') as datafile:
-                    datawriter = csv.writer(datafile)
-                    datawriter.writerow(
-                        [int(day_prices[i]["timestamp"]),
-                         energy_price_time,
-                         float(period_average_price),
-                         int(income_tax)])
+    if write_to_file:
+        with open(filename, "a", newline='') as datafile:
+            datawriter = csv.writer(datafile)
+            for row in range(len(prices)):
+                timestamp = int(prices[row]["timestamp"])
+                datawriter.writerow([
+                    timestamp,
+                    convert_timestamp(prices[row]["timestamp"]),
+                    prices[row]["price"],
+                    int(income_tax)])
 
-write_price_data_to_file(2)
 
-# ---------------------------------------------------------------------
-# ÜLESANNE B: AJALOO SALVESTAMINE
-# Salvesta iga päeva hinnad faili ja võrdle päevi omavahel.
-# - Vali formaat: CSV (tabel, avaneb Excelis) või JSON (sarnane
-#   API vastusega). Pythonis on mõlema jaoks moodul: csv / json
-# - Loe eilne fail sisse, arvuta mõlema päeva keskmine ja prindi:
-#   "Täna on elekter 12% kallim kui eile"
-# - Nädala keskmine:
-# - Mõtlemiseks: Eleringi API annab ka mineviku hindu -
-#   miks võiks ikkagi olla mõistlik andmeid ise salvestada?
-# ---------------------------------------------------------------------
+save_day_prices(day_prices, "./data/energy.csv")
 
 # ---------------------------------------------------------------------
 # ÜLESANNE C: GRAAFIK (matplotlib)
