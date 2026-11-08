@@ -4,8 +4,6 @@ import requests
 import csv
 import price_charts
 
-
-
 # Constants
 income_tax = 24
 
@@ -17,13 +15,13 @@ def convert_timestamp(timestamp):
 def calculate_price(price):
     return round((price / 1000) * (income_tax/100 + 1) * 100, 3)
 
-#AI abi sai kasutatud, et aru saada milliselt saaks day_prices json infot for loopiga läbida. Et saaks kindel tundide vahemik kätte
 # Loop, läbimiseks päeva hinnad ja iga 15 min tagant tagastada 2 tunni keskmise hinde
 def calculate_lowest_period_cost(hours):
     period = hours * 4
     lowest_energy_price_range = 99999
     lowest_energy_price_time = convert_timestamp(day_prices[0]["timestamp"])
 
+    #AI aitas kuidas seda for loopi tuleks alustada
     for i in range(len(day_prices) - period + 1):
         energy_price_sum = 0
         for n in range(i, i + period):
@@ -35,7 +33,7 @@ def calculate_lowest_period_cost(hours):
             lowest_energy_price_time = energy_price_time.time().strftime("%H:%M")
     return lowest_energy_price_range, lowest_energy_price_time
 
-# AI aitas millisel kujul oleks loogika mõistlikum.
+# AI aitas millisel kujul oleks if loogika mõistlikum.
 # Salvesta päeva hinna info faili hilisemaks kasutamiseks
 def save_day_prices(prices, filename):
     file_exists = os.path.exists(filename)
@@ -123,75 +121,3 @@ for each in day_prices:
     times.append(convert_timestamp(each["timestamp"]))
     price_values.append(calculate_price(each["price"]))
 price_charts.draw_price_chart(times, price_values, "hinnagraafik.png")
-
-
-
-# =====================================================================
-# URMO ÜLESANDED
-# (Ülesannete kirjeldused koostatud AI abiga, kood kirjutatud iseseisvalt)
-# Kasuta andmeid: day_prices (list, igas elemendis "timestamp" ja "price")
-#                 current_energy_price (praegune hind, s/kWh koos käibemaksuga)
-# =====================================================================
-
-# ---------------------------------------------------------------------
-# ÜLESANNE 1: PÄEVA KESKMINE HIND  (~8 rida)
-# Tee funktsioon, mis saab sisse hindade listi ja tagastab keskmise.
-# - Loo muutuja summa jaoks, alguses 0
-# - Käi for-tsükliga list läbi ja liida iga "price" summale
-# - Keskmine = summa / mitu elementi listis on (vihje: len())
-# - Prindi tulemus välja
-# ---------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------
-# ÜLESANNE 2: ODAV VÕI KALLIS?  (~10 rida)
-# Tee funktsioon, mis saab sisse praeguse hinna ja päeva keskmise
-# ning tagastab sõna "odav", "keskmine" või "kallis".
-# - Kasuta if / elif / else
-# - Nt: alla 80% keskmisest = odav, üle 120% = kallis, muidu keskmine
-# - Prindi: "Praegu on elekter: odav"
-# ---------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------
-# ÜLESANNE 3: MITU ODAVAT PERIOODI  (~8 rida)
-# Loe kokku, mitu 15-min perioodi päevas on hinnaga alla X.
-# - Küsi X kasutajalt: input() ja teisenda numbriks (float())
-# - Loendur alguses 0, tsüklis +1 kui hind on piirist väiksem
-# - Prindi: "Täna on 23 perioodi hinnaga alla 50 €/MWh"
-# - Boonus: mitu tundi see kokku teeb? (1 periood = 15 min)
-# ---------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------
-# ÜLESANNE 4: PÄEVA HINNATABEL  (~8 rida)
-# Prindi välja kõik päeva hinnad loetaval kujul:
-#   00:00   4.12 s/kWh
-#   00:15   3.98 s/kWh
-#   ...
-# - for-tsükkel üle day_prices
-# - Kellaaeg timestampist (kasuta Alo funktsiooni)
-# - Ainult tund ja minut: .strftime("%H:%M")
-# ---------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------
-# ÜLESANNE 5: TEKSTILINE TULPDIAGRAMM  (~10 rida)
-# Sama tabel, aga iga hinna kõrval on tulp sümbolitest:
-#   07:45  41.0 s/kWh  ########################################
-#   23:15   2.0 s/kWh  ##
-# - Pythonis saab teksti korrutada: "#" * 5 annab "#####"
-# - Tulba pikkus = hind sentides, ümardatud täisarvuks (int())
-# ---------------------------------------------------------------------
-
-
-# ---------------------------------------------------------------------
-# ÜLESANNE 6: SEADME KULU KALKULAATOR  (~15 rida)
-# Kasutaja sisestab seadme võimsuse ja kasutusaja, programm
-# arvutab, palju see praeguse hinnaga maksab.
-# - Küsi: võimsus kW-des (nt saun 9 kW) ja aeg tundides
-# - Energia (kWh) = võimsus * aeg
-# - Hind eurodes = energia * hind €/kWh
-# - Prindi: "Saun 1h maksab praegu 0.93 €"
-# - Boonus: arvuta ka, palju see maksaks päeva odavaimal ajal
-# ---------------------------------------------------------------------
