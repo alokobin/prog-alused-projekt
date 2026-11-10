@@ -6,6 +6,10 @@ import price_charts
 
 # Constants
 income_tax = 24
+url_current_energy_price = "https://dashboard.elering.ee/api/nps/price/ee/current"
+
+# Aeg
+current_date = datetime.datetime.now()
 
 # Lihtsustamis funktsioon timestampi konvertimiseks kuupäevaks
 def convert_timestamp(timestamp):
@@ -15,13 +19,39 @@ def convert_timestamp(timestamp):
 def calculate_price(price):
     return round((price / 1000) * (income_tax/100 + 1) * 100, 3)
 
+# Funktsioon päeva max hinna/aja leidmiseks
+def get_day_max_price_and_time():
+    max_day_energy_price_in_mwh = day_prices[0]["price"]
+    max_price_time = day_prices[0]["timestamp"]
+
+    for timeslot in day_prices:
+        energy_price = timeslot["price"]
+        if energy_price > max_day_energy_price_in_mwh:
+            max_day_energy_price_in_mwh = energy_price
+            max_price_time = timeslot["timestamp"]
+
+    return calculate_price(max_day_energy_price_in_mwh), convert_timestamp(max_price_time)
+
+# Funktsioon päeva min hinna/aja leidmiseks
+def get_day_min_price_and_time():
+    min_day_energy_price_in_mwh = day_prices[0]["price"]
+    min_price_time = day_prices[0]["timestamp"]
+
+    for timeslot in day_prices:
+        energy_price = timeslot["price"]
+        if energy_price < min_day_energy_price_in_mwh:
+            min_day_energy_price_in_mwh = energy_price
+            min_price_time = timeslot["timestamp"]
+
+    return calculate_price(min_day_energy_price_in_mwh), convert_timestamp(min_price_time)
+
 # Loop, läbimiseks päeva hinnad ja iga 15 min tagant tagastada 2 tunni keskmise hinde
 def calculate_lowest_period_cost(hours):
     period = hours * 4
     lowest_energy_price_range = 99999
     lowest_energy_price_time = convert_timestamp(day_prices[0]["timestamp"])
 
-    #AI aitas kuidas seda for loopi tuleks alustada
+    # AI aitas kuidas seda for loopi tuleks alustada
     for i in range(len(day_prices) - period + 1):
         energy_price_sum = 0
         for n in range(i, i + period):
@@ -31,6 +61,7 @@ def calculate_lowest_period_cost(hours):
         if period_average_price < lowest_energy_price_range:
             lowest_energy_price_range = period_average_price
             lowest_energy_price_time = energy_price_time.time().strftime("%H:%M")
+
     return lowest_energy_price_range, lowest_energy_price_time
 
 # AI aitas millisel kujul oleks if loogika mõistlikum.
@@ -63,58 +94,57 @@ def save_day_prices(prices, filename):
                     prices[row]["price"],
                     int(income_tax)])
 
-#API päringute jaoks kuupäevad, et oleks alati õige päev
-current_date = datetime.datetime.now()
-start_date = current_date.date() - datetime.timedelta(days=1)
-end_date = current_date.date()
-current_time = current_date.time().strftime("%H:%M")
+def get_current_energy_price():
+    current_energy_price_info = requests.get(url_current_energy_price).json()
+    current_energy_price = current_energy_price_info['data'][0]["price"]
+    current_price_time = current_energy_price_info['data'][0]["timestamp"]
 
-#API päringute URLi variables
-url_current_energy_price = "https://dashboard.elering.ee/api/nps/price/ee/current"
-url_whole_day_energy_price = f"https://dashboard.elering.ee/api/nps/price?start={start_date}T22:00:00Z&end={end_date}T21:59:59Z"
-print(url_whole_day_energy_price)
+    return calculate_price(current_energy_price), convert_timestamp(current_price_time)
 
-#Küsime eleringi API käest praeguse ajahetke elektri börsihinna
-current_energy_price_info = requests.get(url_current_energy_price).json()
+def get_whole_day_price_info_estonia_dictionary():
+    #Kuupäev URLi jaoks, et iga päev saaks õige kuupäeva
+    start_date = current_date.date() - datetime.timedelta(days=1)
+    end_date = current_date.date()
 
-#Küsime eleringi API käest ühe päeva elektri börsihinnad
-whole_day_energy_price_info = requests.get(url_whole_day_energy_price).json()
-day_prices = whole_day_energy_price_info['data']["ee"]
+    url_whole_day_energy_price = f"https://dashboard.elering.ee/api/nps/price?start={start_date}T22:00:00Z&end={end_date}T21:59:59Z"
+    whole_day_energy_price_info = requests.get(url_whole_day_energy_price).json()
+    day_prices = whole_day_energy_price_info['data']["ee"]
 
-#Võtame eleringi API JSON vastusest hinna ja aja väärtuse
-current_energy_price = calculate_price(current_energy_price_info['data'][0]["price"])
-current_price_time = current_energy_price_info['data'][0]["timestamp"]
-max_day_energy_price_in_MWh = day_prices[0]["price"]
-min_day_energy_price_in_MWh = day_prices[0]["price"]
-max_price_time = day_prices[0]["timestamp"]
-min_price_time = day_prices[0]["timestamp"]
+    return day_prices
 
-#Tsükkel, et käia läbi whole_day_energy_price_info oleva hinna parameetrid ja leida kõige kõrgem elektri hind päevas
-for timeslot in day_prices:
-    energy_price = timeslot["price"]
-    if energy_price > max_day_energy_price_in_MWh:
-        max_day_energy_price_in_MWh = energy_price
-        max_price_time = timeslot["timestamp"]
-    if energy_price < min_day_energy_price_in_MWh:
-        min_day_energy_price_in_MWh = energy_price
-        min_price_time = timeslot["timestamp"]
+def get_current_time():
+    current_time_unformated = datetime.datetime.now()
+    current_time = current_time_unformated.strftime("%H:%M")
 
-max_day_energy_price_in_kWh = calculate_price(max_day_energy_price_in_MWh)
-min_day_energy_price_in_kWh = calculate_price(min_day_energy_price_in_MWh)
+    return current_time
+
+# Praegune kellaaeg
+current_time = get_current_time()
+
+# Küsime eleringi API käest ühe päeva elektri börsihinnad
+day_prices = get_whole_day_price_info_estonia_dictionary()
+
+# Määrame praeguse hinna/aja väärtused parameetrile
+current_energy_price, current_price_time = get_current_energy_price()
+
+# Määrame päeva min ja max hinna/aja
+day_min_price, day_min_price_time = get_day_min_price_and_time()
+day_max_price, day_max_price_time = get_day_max_price_and_time()
 
 # Kuvame info seoses tänase elektri hinnaga
 print("Praegune kellaaeg", current_time)
-print("Praegune elektri hind:", current_energy_price, "s/kWh kell", convert_timestamp(current_price_time))
-print("Päeva kõrgeim elektri hind:", max_day_energy_price_in_kWh, "s/kWh kell" ,convert_timestamp(max_price_time))
-print("Päeva madalaim elektri hind:", min_day_energy_price_in_kWh, "s/kWh kell", convert_timestamp(min_price_time))
+print("Praegune elektri hind:", current_energy_price, "s/kWh kell", current_price_time)
+print("Päeva kõrgeim elektri hind:", day_max_price, "s/kWh kell" ,day_max_price_time)
+print("Päeva madalaim elektri hind:", day_min_price, "s/kWh kell", day_min_price_time)
 
 # Kuvame 2h odavaima perioodi
 period_average_price, energy_price_time = calculate_lowest_period_cost(2)
 print('Odavaim 2 tunnine periood:',period_average_price, 's/kWh' , energy_price_time)
 
+# Salvestame päeva hindade info faili
 save_day_prices(day_prices, "./data/energy.csv")
 
-#AI poolt graafiku kuva
+# AI poolt graafiku kuva
 times = []
 price_values = []
 for each in day_prices:
