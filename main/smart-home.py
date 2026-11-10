@@ -145,6 +145,22 @@ print("Päeva madalaim elektri hind:", day_min_price, "s/kWh kell", day_min_pric
 period_average_price, energy_price_time = calculate_lowest_period_cost(2)
 print('Odavaim 2 tunnine periood:',period_average_price, 's/kWh' , energy_price_time)
 
+
+# Päeva keskmine hind // URMO
+def get_day_average_price():
+    energy_price_sum = 0
+    
+    for entry in day_prices:
+        energy_price_sum += calculate_price(entry["price"])
+    energy_price_average = energy_price_sum / len(day_prices)
+
+    return round(energy_price_average, 3)
+
+
+day_average_price = get_day_average_price()
+print("Päeva keskmine elektri hind:", day_average_price, "s/kWh")
+
+
 # Salvestame päeva hindade info faili
 save_day_prices(day_prices, PRICE_DATA_FILE)
 
