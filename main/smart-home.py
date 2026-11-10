@@ -5,8 +5,12 @@ import csv
 import price_charts
 
 # Constants
-income_tax = 24
-url_current_energy_price = "https://dashboard.elering.ee/api/nps/price/ee/current"
+VAT_PERCENT = 24
+CURRENT_ENERGY_PRICE_URL = "https://dashboard.elering.ee/api/nps/price/ee/current"
+DAY_ENERGY_PRICE_URL = "https://dashboard.elering.ee/api/nps/price"
+PRICE_DATA_FILE = "./data/energy.csv"
+PRICES_PER_HOUR = 4
+CHART_FILE = "hinnagraafik.png"
 
 # Aeg
 current_date = datetime.datetime.now()
@@ -17,7 +21,7 @@ def convert_timestamp(timestamp):
 
 # Funktsioon, et konverti MWh > s/kWh ja arvutada juurde käibemaks
 def calculate_price(price):
-    return round((price / 1000) * (income_tax/100 + 1) * 100, 3)
+    return round((price / 1000) * (VAT_PERCENT / 100 + 1) * 100, 3)
 
 # Funktsioon päeva max hinna/aja leidmiseks
 def get_day_max_price_and_time():
@@ -47,7 +51,7 @@ def get_day_min_price_and_time():
 
 # Loop, läbimiseks päeva hinnad ja iga 15 min tagant tagastada 2 tunni keskmise hinde
 def calculate_lowest_period_cost(hours):
-    period = hours * 4
+    period = hours * PRICES_PER_HOUR
     lowest_energy_price_range = 99999
     lowest_energy_price_time = convert_timestamp(day_prices[0]["timestamp"])
 
@@ -81,7 +85,7 @@ def save_day_prices(prices, filename):
     if not file_exists:
         with open(filename, "a", newline='') as datafile:
             datawriter = csv.writer(datafile)
-            datawriter.writerow(["timestamp", "time", "price", "income_tax"])
+            datawriter.writerow(["timestamp", "time", "price", "vat_percent"])
 
     if not already_saved:
         with open(filename, "a", newline='') as datafile:
@@ -92,10 +96,10 @@ def save_day_prices(prices, filename):
                     timestamp,
                     convert_timestamp(prices[row]["timestamp"]),
                     prices[row]["price"],
-                    int(income_tax)])
+                    int(VAT_PERCENT)])
 
 def get_current_energy_price():
-    current_energy_price_info = requests.get(url_current_energy_price).json()
+    current_energy_price_info = requests.get(CURRENT_ENERGY_PRICE_URL).json()
     current_energy_price = current_energy_price_info['data'][0]["price"]
     current_price_time = current_energy_price_info['data'][0]["timestamp"]
 
@@ -106,7 +110,7 @@ def get_whole_day_price_info_estonia_dictionary():
     start_date = current_date.date() - datetime.timedelta(days=1)
     end_date = current_date.date()
 
-    url_whole_day_energy_price = f"https://dashboard.elering.ee/api/nps/price?start={start_date}T22:00:00Z&end={end_date}T21:59:59Z"
+    url_whole_day_energy_price = f"{DAY_ENERGY_PRICE_URL}?start={start_date}T22:00:00Z&end={end_date}T21:59:59Z"
     whole_day_energy_price_info = requests.get(url_whole_day_energy_price).json()
     day_prices = whole_day_energy_price_info['data']["ee"]
 
@@ -142,7 +146,7 @@ period_average_price, energy_price_time = calculate_lowest_period_cost(2)
 print('Odavaim 2 tunnine periood:',period_average_price, 's/kWh' , energy_price_time)
 
 # Salvestame päeva hindade info faili
-save_day_prices(day_prices, "./data/energy.csv")
+save_day_prices(day_prices, PRICE_DATA_FILE)
 
 # AI poolt graafiku kuva
 times = []
@@ -150,4 +154,4 @@ price_values = []
 for each in day_prices:
     times.append(convert_timestamp(each["timestamp"]))
     price_values.append(calculate_price(each["price"]))
-price_charts.draw_price_chart(times, price_values, "hinnagraafik.png")
+price_charts.draw_price_chart(times, price_values, CHART_FILE)
